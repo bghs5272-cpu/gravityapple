@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>중력과 질량·무게 탐구 게임</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #0b0f19;
+            color: #f1f5f9;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .font-jua { font-family: 'Jua', sans-serif; }
+        
+        /* Custom UI styles */
+        .glow-box {
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.25);
+        }
+        .glow-text-yellow {
+            text-shadow: 0 0 12px rgba(250, 204, 21, 0.6);
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        /* Touch Button Active Effects */
+        .btn-touch:active {
+            transform: scale(0.92);
+            background-color: rgba(255, 255, 255, 0.35) !important;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen overflow-hidden flex flex-col bg-slate-950 text-slate-100">
+
+    <!-- Top Header -->
+    <header class="h-14 bg-slate-900 border-b border-indigo-900/50 px-4 flex items-center justify-between shrink-0 z-10">
+        <div class="flex items-center gap-3">
+            <span class="text-2xl">🌌</span>
+            <h1 class="font-jua text-xl md:text-2xl text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-indigo-200 to-cyan-300">
+                중력 탐험대: 중력과 질량·무게
+            </h1>
+        </div>
+        <div class="flex items-center gap-2 sm:gap-4">
+            <button id="audio-toggle-btn" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs sm:text-sm px-3 py-1.5 rounded-lg border border-slate-700 flex items-center gap-1.5 transition">
+                <span id="audio-icon">🔊</span> <span class="hidden sm:inline">효과음 On</span>
+            </button>
+            <button id="guide-btn" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs sm:text-sm px-3 py-1.5 rounded-lg font-semibold shadow transition">
+                📖 학습 도움말
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <div class="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
+        
+        <!-- Left / Top: Game Canvas Viewport -->
+        <div id="game-container" class="flex-1 relative bg-slate-950 flex justify-center items-center overflow-hidden">
+            
+            <!-- Canvas -->
+            <canvas id="gameCanvas" class="w-full h-full block cursor-crosshair"></canvas>
+
+            <!-- On-Screen HUD Overlay -->
+            <div class="absolute top-3 left-3 right-3 flex justify-between items-start pointer-events-none z-10">
+                <!-- Current Planet & Gravity Info -->
+                <div class="bg-slate-900/85 backdrop-blur border border-indigo-500/40 rounded-xl p-2.5 sm:p-3 shadow-lg flex items-center gap-3">
+                    <div id="planet-badge-icon" class="text-3xl sm:text-4xl">🌍</div>
+                    <div>
+                        <div id="planet-stage-title" class="font-jua text-lg sm:text-xl text-yellow-300">STAGE 1: 지구 (Earth)</div>
+                        <div id="planet-gravity-text" class="text-xs sm:text-sm text-cyan-300 font-semibold">중력 가속도: 1.0G (표준)</div>
+                    </div>
+                </div>
+
+                <!-- Timer & Score -->
+                <div class="flex gap-2 sm:gap-3">
+                    <div class="bg-slate-900/85 backdrop-blur border border-slate-700 rounded-xl px-3 py-2 text-center shadow-lg min-w-[75px]">
+                        <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">남은 시간</div>
+                        <div id="timer-display" class="font-jua text-2xl sm:text-3xl text-red-400">90초</div>
+                    </div>
+                    <div class="bg-slate-900/85 backdrop-blur border border-amber-500/40 rounded-xl px-3.5 py-2 text-center shadow-lg min-w-[85px]">
+                        <div class="text-[10px] text-amber-400 font-bold uppercase tracking-wider">누적 점수</div>
+                        <div id="score-display" class="font-jua text-2xl sm:text-3xl text-amber-300">0점</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tablet Friendly Touch Controls (Left & Right Thumb) -->
+            <div class="absolute bottom-4 left-4 right-4 flex justify-between items-end pointer-events-none z-20">
+                <!-- Left Move Button -->
+                <button id="btn-touch-left" class="pointer-events-auto btn-touch w-20 h-20 sm:w-24 sm:h-24 bg-indigo-600/40 border-2 border-indigo-400/60 backdrop-blur-md rounded-full flex justify-center items-center text-4xl text-white shadow-2xl active:bg-indigo-500/70 transition-transform">
+                    ⬅️
+                </button>
+                
+                <!-- Quick Hint Badge on Canvas -->
+                <div class="hidden sm:block pointer-events-none bg-slate-900/80 backdrop-blur border border-indigo-500/30 px-4 py-1.5 rounded-full text-xs text-indigo-200">
+                    💡 **중력 방향**: 사과와 폭탄은 항상 <span class="text-yellow-300 font-bold">천체의 중심</span>으로 떨어집니다!
+                </div>
+
+                <!-- Right Move Button -->
+                <button id="btn-touch-right" class="pointer-events-auto btn-touch w-20 h-20 sm:w-24 sm:h-24 bg-indigo-600/40 border-2 border-indigo-400/60 backdrop-blur-md rounded-full flex justify-center items-center text-4xl text-white shadow-2xl active:bg-indigo-500/70 transition-transform">
+                    ➡️
+                </button>
+            </div>
+
+            <!-- Modal Overlay (Start / Stage Clear / Game Over / Help) -->
+            <div id="modal-overlay" class="absolute inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-30">
+                
+                <!-- Card Container -->
+                <div id="modal-card" class="bg-slate-900 border-2 border-indigo-500/50 rounded-2xl max-w-lg w-full p-6 shadow-2xl text-center relative overflow-hidden">
+                    <div class="absolute -top-12 -left-12 w-32 h-32 bg-indigo-500/20 rounded-full blur-2xl"></div>
+                    <div class="absolute -bottom-12 -right-12 w-32 h-32 bg-amber-500/20 rounded-full blur-2xl"></div>
+
+                    <div id="modal-icon" class="text-6xl mb-3 animate-bounce">🌍</div>
+                    <h2 id="modal-title" class="font-jua text-3xl sm:text-4xl text-yellow-300 mb-2">중력 탐험대 출발!</h2>
+                    <p id="modal-subtitle" class="text-slate-300 text-sm sm:text-base mb-5 leading-relaxed">
+                        지구, 달, 목성을 탐험하며 각 천체마다 달라지는 중력을 체험해 보세요!
+                    </p>
+
+                    <!-- Dynamic Body Content -->
+                    <div id="modal-content" class="bg-slate-950/60 rounded-xl p-4 text-left border border-slate-800 text-xs sm:text-sm text-slate-300 space-y-2 mb-6">
+                        <p class="text-indigo-300 font-semibold mb-1">🎮 미션 안내:</p>
+                        <p>1. 천체 중심 방향으로 떨어지는 사과를 캐릭터로 받으세요.</p>
+                        <p>2. 태블릿 화면 양옆의 <span class="text-yellow-300 font-bold">⬅️ ➡️ 버튼</span>이나 키보드 <span class="text-yellow-300 font-bold">방향키</span>로 이동합니다.</p>
+                        <p>3. 제한시간 <span class="text-red-400 font-bold">90초</span> 동안 최대한 많은 점수를 획득하세요!</p>
+                    </div>
+
+                    <!-- Action Button -->
+                    <button id="modal-action-btn" class="w-full font-jua text-xl bg-gradient-to-r from-amber-500 to-indigo-600 hover:from-amber-400 hover:to-indigo-500 text-white py-3.5 px-6 rounded-xl shadow-lg transition transform active:scale-95">
+                        게임 시작하기 🚀
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Side: Educational Physics Panel -->
+        <div id="edu-panel" class="w-full lg:w-96 bg-slate-900 border-t lg:border-t-0 lg:border-l border-indigo-900/40 p-4 sm:p-5 flex flex-col gap-4 overflow-y-auto shrink-0">
+            
+            <!-- Science Card 1: Gravity Direction -->
+            <div class="bg-slate-950/70 border border-indigo-500/30 rounded-xl p-4 glow-box">
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="text-xl">🧲</span>
+                    <h3 class="font-jua text-lg text-indigo-300">1. 중력의 방향</h3>
+                </div>
+                <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                    중력은 질량을 가진 천체가 물체를 당기는 힘입니다.
+                    중력의 방향은 항상 <strong class="text-amber-300 font-bold">천체의 중심 방향</strong>을 향합니다!
+                </p>
+            </div>
+
+            <!-- Science Card 2: Mass vs Weight -->
+            <div class="bg-slate-950/70 border border-cyan-500/30 rounded-xl p-4">
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="text-xl">⚖️</span>
+                    <h3 class="font-jua text-lg text-cyan-300">2. 질량과 무게의 핵심 구분</h3>
+                </div>
+                <div class="space-y-2 text-xs sm:text-sm">
+                    <div class="bg-indigo-950/40 p-2.5 rounded-lg border border-indigo-800/40">
+                        <span class="text-amber-300 font-bold">● 질량 (Mass):</span>
+                        <p class="text-slate-300 mt-0.5">물체의 고유한 양 (단위: kg, g). <br>장소가 바뀌어도 <strong class="text-emerald-400">어디서나 항상 일정</strong>합니다!</p>
+                    </div>
+                    <div class="bg-indigo-950/40 p-2.5 rounded-lg border border-indigo-800/40">
+                        <span class="text-cyan-300 font-bold">● 무게 (Weight):</span>
+                        <p class="text-slate-300 mt-0.5">물체에 작용하는 중력의 크기 (단위: N, kgf). <br>천체의 <strong class="text-orange-400">중력 크기에 따라 변화</strong>합니다!</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Science Card 3: Interactive Mass-Weight Calculator Widget -->
+            <div class="bg-slate-950/70 border border-amber-500/30 rounded-xl p-4">
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="text-xl">🧮</span>
+                    <h3 class="font-jua text-lg text-amber-300">3. 내 몸무게 측정기 (실시간 비교)</h3>
+                </div>
+                
+                <div class="flex items-center gap-2 mb-3">
+                    <label for="input-mass" class="text-xs text-slate-400 whitespace-nowrap">내 질량(kg):</label>
+                    <input id="input-mass" type="number" value="50" min="1" max="200" 
+                           class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1 text-sm text-center text-yellow-300 font-bold focus:outline-none focus:border-amber-400">
+                </div>
+
+                <div class="grid grid-cols-3 gap-1.5 text-center text-xs">
+                    <div class="bg-slate-900/90 p-2 rounded border border-blue-500/40">
+                        <div class="text-slate-400 text-[10px]">🌍 지구</div>
+                        <div id="calc-earth-weight" class="font-jua text-sm text-blue-300 mt-0.5">490 N</div>
+                    </div>
+                    <div class="bg-slate-900/90 p-2 rounded border border-slate-500/40">
+                        <div class="text-slate-400 text-[10px]">🌑 달 (1/6)</div>
+                        <div id="calc-moon-weight" class="font-jua text-sm text-slate-300 mt-0.5">81.7 N</div>
+                    </div>
+                    <div class="bg-slate-900/90 p-2 rounded border border-orange-500/40">
+                        <div class="text-slate-400 text-[10px]">🪐 목성 (2.5x)</div>
+                        <div id="calc-jupiter-weight" class="font-jua text-sm text-orange-300 mt-0.5">1225 N</div>
+                    </div>
+                </div>
+                <p class="text-[11px] text-slate-400 mt-2 text-center">
+                    💡 달에서는 지구가 당기는 중력의 1/6이므로 무게도 1/6로 줄어듭니다!
+                </p>
+            </div>
+
+            <!-- Item Points Guide Legend -->
+            <div class="bg-slate-950/70 border border-slate-800 rounded-xl p-3">
+                <h4 class="font-jua text-xs text-slate-400 mb-2">🍎 아이템 점수 안내</h4>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <div class="flex items-center gap-1.5">
+                        <span>🍎</span> <span class="text-red-400 font-bold">일반 사과</span> (+10점)
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span>🌟</span> <span class="text-yellow-300 font-bold">황금 사과</span> (+30점)
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span>💣</span> <span class="text-slate-400 font-bold">일반 폭탄</span> (-10점)
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span>💥</span> <span class="text-orange-400 font-bold">황금 폭탄</span> (-40점)
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Game Script Logic -->
+    <script>
+        // --- Web Audio API Sound Synthesizer ---
+        let audioEnabled = true;
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playSound(type) {
+            if (!audioEnabled) return;
+            initAudio();
+            if (!audioCtx) return;
+
+            const now = audioCtx.currentTime;
+
+            if (type === 'apple') { // +10 Apple Catch
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(523.25, now); // C5
+                osc.frequency.exponentialRampToValueAtTime(783.99, now + 0.12); // G5
+                gain.gain.setValueAtTime(0.25, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.12);
+            } 
+            else if (type === 'gold_apple') { // +30 Golden Apple Fanfare
+                [659.25, 783.99, 1046.50].forEach((freq, idx) => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+                    gain.gain.setValueAtTime(0.3, now + idx * 0.08);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.08 + 0.18);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now + idx * 0.08);
+                    osc.stop(now + idx * 0.08 + 0.18);
+                });
+            } 
+            else if (type === 'bomb') { // -10 Bomb
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(180, now);
+                osc.frequency.exponentialRampToValueAtTime(40, now + 0.2);
+                gain.gain.setValueAtTime(0.35, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.2);
+            } 
+            else if (type === 'gold_bomb') { // -40 Golden Bomb Heavy Explosion
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(220, now);
+                osc.frequency.linearRampToValueAtTime(30, now + 0.35);
+                gain.gain.setValueAtTime(0.4, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.35);
+            } 
+            else if (type === 'clear') { // Stage Clear
+                [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, now + idx * 0.1);
+                    gain.gain.setValueAtTime(0.3, now + idx * 0.1);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.1 + 0.25);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now + idx * 0.1);
+                    osc.stop(now + idx * 0.1 + 0.25);
+                });
+            }
+        }
+
+        // --- Canvas & Game State Setup ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // UI Element References
+        const timerDisplay = document.getElementById('timer-display');
+        const scoreDisplay = document.getElementById('score-display');
+        const planetStageTitle = document.getElementById('planet-stage-title');
+        const planetGravityText = document.getElementById('planet-gravity-text');
+        const planetBadgeIcon = document.getElementById('planet-badge-icon');
+        
+        const modalOverlay = document.getElementById('modal-overlay');
+        const modalIcon = document.getElementById('modal-icon');
+        const modalTitle = document.getElementById('modal-title');
+        const modalSubtitle = document.getElementById('modal-subtitle');
+        const modalContent = document.getElementById('modal-content');
+        const modalActionBtn = document.getElementById('modal-action-btn');
+
+        const audioToggleBtn = document.getElementById('audio-toggle-btn');
+        const audioIcon = document.getElementById('audio-icon');
+        const guideBtn = document.getElementById('guide-btn');
+
+        // Stage Configurations
+        const STAGE_CONFIGS = [
+            {
+                stage: 1,
+                name: "지구 (Earth)",
+                icon: "🌍",
+                gravityText: "중력 가속도: 1.0G (표준: 9.8 m/s²)",
+                desc: "지구의 중력은 표준입니다. 사과가 일정 속도로 지구 중심을 향해 내려옵니다.",
+                speedMult: 1.0,
+                spawnRate: 48
+            },
+            {
+                stage: 2,
+                name: "달 (Moon)",
+                icon: "🌑",
+                gravityText: "중력 가속도: 0.16G (지구의 1/6)",
+                desc: "달은 지구보다 중력이 1/6로 작아 사과가 느리게 떨어집니다! 받기 훨씬 수월해요.",
+                speedMult: 0.42,
+                spawnRate: 38
+            },
+            {
+                stage: 3,
+                name: "목성 (Jupiter)",
+                icon: "🪐",
+                gravityText: "중력 가속도: 2.5G (지구의 2.5배)",
+                desc: "태양계에서 가장 질량이 큰 목성! 중력이 매우 강해 사과가 훨씬 빠르게 쏟아집니다!",
+                speedMult: 1.85,
+                spawnRate: 28
+            }
+        ];
+
+        let gameState = 'INIT'; // INIT, PLAYING, STAGE_CLEAR, GAME_OVER
+        let currentStageIndex = 0;
+        let score = 0;
+        let timer = 90;
+        let timerInterval = null;
+        let animFrameId = null;
+
+        // Player & Environment Properties
+        let playerAngle = -Math.PI / 2; // top of planet (-90 deg)
+        let playerMoveLeft = false;
+        let playerMoveRight = false;
+
+        let items = [];
+        let floatingScores = [];
+        let stars = [];
+        let spawnCounter = 0;
+
+        // Handle Responsive Canvas Resize
+        function resizeCanvas() {
+            const container = document.getElementById('game-container');
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            generateStars();
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        function generateStars() {
+            stars = [];
+            for (let i = 0; i < 60; i++) {
+                stars.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    radius: Math.random() * 1.5 + 0.5,
+                    alpha: Math.random() * 0.8 + 0.2
+                });
+            }
+        }
+
+        // --- Input Controls ---
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') playerMoveLeft = true;
+            if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') playerMoveRight = true;
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') playerMoveLeft = false;
+            if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') playerMoveRight = false;
+        });
+
+        // Touch Control Buttons
+        const btnLeft = document.getElementById('btn-touch-left');
+        const btnRight = document.getElementById('btn-touch-right');
+
+        const bindTouchEvents = (btn, setDirection) => {
+            const start = (e) => { e.preventDefault(); setDirection(true); };
+            const end = (e) => { e.preventDefault(); setDirection(false); };
+            btn.addEventListener('touchstart', start, { passive: false });
+            btn.addEventListener('touchend', end, { passive: false });
+            btn.addEventListener('mousedown', start);
+            btn.addEventListener('mouseup', end);
+            btn.addEventListener('mouseleave', end);
+        };
+
+        bindTouchEvents(btnLeft, (val) => playerMoveLeft = val);
+        bindTouchEvents(btnRight, (val) => playerMoveRight = val);
+
+        // Audio Toggle
+        audioToggleBtn.addEventListener('click', () => {
+            audioEnabled = !audioEnabled;
+            audioIcon.innerText = audioEnabled ? '🔊' : '🔇';
+            audioToggleBtn.querySelector('span:nth-child(2)').innerText = audioEnabled ? '효과음 On' : '효과음 Off';
+        });
+
+        // Guide Button
+        guideBtn.addEventListener('click', () => {
+            if (gameState === 'PLAYING') {
+                pauseGameAndShowHelp();
+            } else {
+                showHelpModal();
+            }
+        });
+
+        // Calculator Interactive Input Update
+        const inputMass = document.getElementById('input-mass');
+        function updateWeightCalculator() {
+            const mass = parseFloat(inputMass.value) || 0;
+            // Weight = mass * gravity
+            const earthW = (mass * 9.8).toFixed(1);
+            const moonW = (mass * 1.63).toFixed(1);
+            const jupiterW = (mass * 24.79).toFixed(1);
+
+            document.getElementById('calc-earth-weight').innerText = `${earthW} N`;
+            document.getElementById('calc-moon-weight').innerText = `${moonW} N`;
+            document.getElementById('calc-jupiter-weight').innerText = `${jupiterW} N`;
+        }
+        inputMass.addEventListener('input', updateWeightCalculator);
+        updateWeightCalculator();
+
+        // --- Canvas Drawing Helper Functions ---
+
+        // Get Planet Center & Radius
+        function getPlanetMetrics() {
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+            const radius = Math.min(canvas.width, canvas.height) * 0.28;
+            return { cx, cy, radius };
+        }
+
+        // Draw Procedural Planet (Earth, Moon, Jupiter)
+        function drawPlanet(cx, cy, radius, stageIndex) {
+            ctx.save();
+            ctx.translate(cx, cy);
+
+            // Outer Glow / Atmosphere
+            ctx.beginPath();
+            ctx.arc(0, 0, radius + 10, 0, Math.PI * 2);
+            if (stageIndex === 0) { // Earth Glow
+                ctx.fillStyle = 'rgba(56, 189, 248, 0.15)';
+            } else if (stageIndex === 1) { // Moon Glow
+                ctx.fillStyle = 'rgba(226, 232, 240, 0.12)';
+            } else { // Jupiter Glow
+                ctx.fillStyle = 'rgba(251, 146, 60, 0.18)';
+            }
+            ctx.fill();
+
+            // Main Planet Circle Clip
+            ctx.beginPath();
+            ctx.arc(0, 0, radius, 0, Math.PI * 2);
+            ctx.clip();
+
+            if (stageIndex === 0) { // Earth
+                // Ocean Base
+                ctx.fillStyle = '#1d4ed8';
+                ctx.fillRect(-radius, -radius, radius * 2, radius * 2);
+
+                // Continents
+                ctx.fillStyle = '#15803d';
+                ctx.beginPath();
+                ctx.arc(-radius * 0.3, -radius * 0.2, radius * 0.55, 0, Math.PI * 2);
+                ctx.arc(radius * 0.45, radius * 0.35, radius * 0.45, 0, Math.PI * 2);
+                ctx.arc(-radius * 0.2, radius * 0.6, radius * 0.35, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Polar Ice Caps
+                ctx.fillStyle = '#f8fafc';
+                ctx.beginPath();
+                ctx.arc(0, -radius * 0.85, radius * 0.4, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Swirl Clouds
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+                ctx.beginPath();
+                ctx.ellipse(-radius * 0.1, -radius * 0.4, radius * 0.6, radius * 0.15, 0.2, 0, Math.PI * 2);
+                ctx.ellipse(radius * 0.2, radius * 0.2, radius * 0.7, radius * 0.12, -0.3, 0, Math.PI * 2);
+                ctx.fill();
+
+            } else if (stageIndex === 1) { // Moon
+                // Silver/Gray Surface
+                ctx.fillStyle = '#94a3b8';
+                ctx.fillRect(-radius, -radius, radius * 2, radius * 2);
+
+                // Darker Maria Plains
+                ctx.fillStyle = '#64748b';
+                ctx.beginPath();
+                ctx.arc(-radius * 0.3, -radius * 0.3, radius * 0.4, 0, Math.PI * 2);
+                ctx.arc(radius * 0.3, radius * 0.4, radius * 0.45, 0, Math.PI * 2);
+                ctx.arc(-radius * 0.4, radius * 0.3, radius * 0.3, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Craters
+                const craters = [
+                    { x: -0.2, y: -0.1, r: 0.15 },
+                    { x: 0.4, y: -0.4, r: 0.18 },
+                    { x: -0.5, y: 0.1, r: 0.12 },
+                    { x: 0.1, y: 0.5, r: 0.2 },
+                    { x: 0.5, y: 0.1, r: 0.14 }
+                ];
+                craters.forEach(c => {
+                    ctx.beginPath();
+                    ctx.arc(c.x * radius, c.y * radius, c.r * radius, 0, Math.PI * 2);
+                    ctx.fillStyle = '#475569';
+                    ctx.fill();
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = '#334155';
+                    ctx.stroke();
+                });
+
+            } else { // Jupiter
+                // Stripes Gradient
+                const grad = ctx.createLinearGradient(0, -radius, 0, radius);
+                grad.addColorStop(0, '#c2410c');
+                grad.addColorStop(0.2, '#fed7aa');
+                grad.addColorStop(0.4, '#ea580c');
+                grad.addColorStop(0.6, '#fef08a');
+                grad.addColorStop(0.8, '#9a3412');
+                grad.addColorStop(1, '#ea580c');
+                ctx.fillStyle = grad;
+                ctx.fillRect(-radius, -radius, radius * 2, radius * 2);
+
+                // Great Red Spot!
+                ctx.fillStyle = '#991b1b';
+                ctx.beginPath();
+                ctx.ellipse(radius * 0.3, radius * 0.18, radius * 0.28, radius * 0.16, -0.1, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = '#7f1d1d';
+                ctx.stroke();
+            }
+
+            // Planet Shading / 3D Sphere Effect
+            const sphereGrad = ctx.createRadialGradient(-radius * 0.3, -radius * 0.3, radius * 0.1, 0, 0, radius);
+            sphereGrad.addColorStop(0, 'rgba(255, 255, 255, 0.2)');
+            sphereGrad.addColorStop(0.8, 'rgba(0, 0, 0, 0.1)');
+            sphereGrad.addColorStop(1, 'rgba(0, 0, 0, 0.6)');
+            ctx.fillStyle = sphereGrad;
+            ctx.beginPath();
+            ctx.arc(0, 0, radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Planet Center Mark (Educational Emphasis on Center Gravity)
+            ctx.fillStyle = '#facc15';
+            ctx.beginPath();
+            ctx.arc(0, 0, 5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        // Draw Student Explorer Character
+        function drawPlayer(cx, cy, radius, angle) {
+            ctx.save();
+            // Move to surface point
+            ctx.translate(cx + radius * Math.cos(angle), cy + radius * Math.sin(angle));
+            // Rotate so feet touch surface and head points outwards
+            ctx.rotate(angle + Math.PI / 2);
+
+            // Shadow on ground
+            ctx.fillStyle = 'rgba(0,0,0,0.4)';
+            ctx.beginPath();
+            ctx.ellipse(0, 2, 12, 4, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Legs
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(-4, -10); ctx.lineTo(-5, 0);
+            ctx.moveTo(4, -10); ctx.lineTo(5, 0);
+            ctx.stroke();
+
+            // Shoes
+            ctx.fillStyle = '#ef4444';
+            ctx.fillRect(-8, -2, 6, 4);
+            ctx.fillRect(2, -2, 6, 4);
+
+            // Suit Body
+            ctx.fillStyle = '#38bdf8'; // Explorer suit
+            ctx.beginPath();
+            ctx.roundRect(-10, -26, 20, 17, 5);
+            ctx.fill();
+
+            // Arms Reaching Upwards/Outwards
+            ctx.fillStyle = '#0284c7';
+            ctx.beginPath();
+            ctx.arc(-13, -20, 4, 0, Math.PI * 2);
+            ctx.arc(13, -20, 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Helmet / Head
+            ctx.fillStyle = '#f8fafc';
+            ctx.beginPath();
+            ctx.arc(0, -34, 11, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Visor
+            ctx.fillStyle = '#f59e0b';
+            ctx.beginPath();
+            ctx.ellipse(1, -34, 7, 5, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        // Draw Item (Apple, Golden Apple, Bomb, Golden Bomb)
+        function drawItem(item, cx, cy) {
+            const x = cx + item.dist * Math.cos(item.angle);
+            const y = cy + item.dist * Math.sin(item.angle);
+
+            ctx.save();
+            ctx.translate(x, y);
+            // Face towards planet center
+            ctx.rotate(item.angle - Math.PI / 2);
+
+            if (item.type === 'apple' || item.type === 'gold_apple') {
+                const isGold = item.type === 'gold_apple';
+                
+                // Apple Body
+                ctx.fillStyle = isGold ? '#eab308' : '#dc2626';
+                if (isGold) {
+                    ctx.shadowColor = '#fde047';
+                    ctx.shadowBlur = 12;
+                }
+                ctx.beginPath();
+                ctx.arc(0, 0, item.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+
+                // Gloss Highlight
+                ctx.fillStyle = 'rgba(255,255,255,0.4)';
+                ctx.beginPath();
+                ctx.arc(-item.radius * 0.3, -item.radius * 0.3, item.radius * 0.35, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Stem
+                ctx.strokeStyle = '#78350f';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(0, -item.radius + 2);
+                ctx.quadraticCurveTo(-2, -item.radius - 6, 2, -item.radius - 7);
+                ctx.stroke();
+
+                // Green Leaf
+                ctx.fillStyle = '#22c55e';
+                ctx.beginPath();
+                ctx.ellipse(4, -item.radius - 4, 5, 2.5, Math.PI / 4, 0, Math.PI * 2);
+                ctx.fill();
+
+            } else { // Bomb or Gold Bomb
+                const isGold = item.type === 'gold_bomb';
+
+                // Bomb Sphere Body
+                ctx.fillStyle = isGold ? '#ca8a04' : '#1e293b';
+                if (isGold) {
+                    ctx.shadowColor = '#facc15';
+                    ctx.shadowBlur = 10;
+                }
+                ctx.beginPath();
+                ctx.arc(0, 0, item.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+
+                // Metallic Ring/Cap
+                ctx.fillStyle = '#64748b';
+                ctx.fillRect(-4, -item.radius - 3, 8, 4);
+
+                // Curved Fuse
+                ctx.strokeStyle = '#d97706';
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.moveTo(0, -item.radius - 3);
+                ctx.quadraticCurveTo(6, -item.radius - 10, 8, -item.radius - 6);
+                ctx.stroke();
+
+                // Fuse Spark Particles
+                ctx.fillStyle = '#fef08a';
+                ctx.beginPath();
+                ctx.arc(8 + (Math.random() * 2 - 1), -item.radius - 6 + (Math.random() * 2 - 1), 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            ctx.restore();
+        }
+
+        // --- Spawning Mechanics & Loop Logic ---
+
+        function spawnItem() {
+            const config = STAGE_CONFIGS[currentStageIndex];
+            const rand = Math.random();
+            let type = 'apple';
+
+            if (rand < 0.15) type = 'gold_apple';       // 15% Golden Apple (+30)
+            else if (rand < 0.35) type = 'bomb';         // 20% Normal Bomb (-10)
+            else if (rand < 0.45) type = 'gold_bomb';    // 10% Golden Bomb (-40)
+
+            const spawnAngle = Math.random() * Math.PI * 2;
+            const maxDist = Math.max(canvas.width, canvas.height) * 0.65;
+            const baseSpeed = 2.2 * config.speedMult;
+
+            items.push({
+                angle: spawnAngle,
+                dist: maxDist,
+                speed: baseSpeed * (0.85 + Math.random() * 0.3),
+                type: type,
+                radius: 14
+            });
+        }
+
+        function updateGamePhysics() {
+            const { cx, cy, radius } = getPlanetMetrics();
+
+            // Player Movement (Polar coordinate theta step)
+            const angularSpeed = 0.045;
+            if (playerMoveLeft) playerAngle -= angularSpeed;
+            if (playerMoveRight) playerAngle += angularSpeed;
+
+            // Keep player angle normalized
+            playerAngle = (playerAngle + Math.PI * 2) % (Math.PI * 2);
+
+            // Update Items (Fall towards planet center)
+            for (let i = items.length - 1; i >= 0; i--) {
+                const item = items[i];
+                item.dist -= item.speed;
+
+                // Check Catch Collision (near surface)
+                const playerCatchRadius = radius + 22;
+                if (Math.abs(item.dist - playerCatchRadius) < 16) {
+                    
+                    // Angle difference calculation
+                    let normItemAngle = (item.angle + Math.PI * 2) % (Math.PI * 2);
+                    let angleDiff = Math.abs(normItemAngle - playerAngle);
+                    if (angleDiff > Math.PI) angleDiff = Math.PI * 2 - angleDiff;
+
+                    // Collision Threshold (~0.18 rad)
+                    if (angleDiff < 0.18) {
+                        // Catch Item!
+                        let points = 0;
+                        let text = '';
+                        let color = '#fff';
+
+                        if (item.type === 'apple') {
+                            points = 10; text = '+10'; color = '#4ade80'; playSound('apple');
+                        } else if (item.type === 'gold_apple') {
+                            points = 30; text = '+30'; color = '#facc15'; playSound('gold_apple');
+                        } else if (item.type === 'bomb') {
+                            points = -10; text = '-10'; color = '#f87171'; playSound('bomb');
+                        } else if (item.type === 'gold_bomb') {
+                            points = -40; text = '-40'; color = '#fb923c'; playSound('gold_bomb');
+                        }
+
+                        score += points;
+                        scoreDisplay.innerText = `${score}점`;
+
+                        // Add Floating Score Indicator above character
+                        const px = cx + (radius + 40) * Math.cos(playerAngle);
+                        const py = cy + (radius + 40) * Math.sin(playerAngle);
+                        floatingScores.push({
+                            x: px, y: py,
+                            text: text, color: color,
+                            alpha: 1.0, scale: 1.2
+                        });
+
+                        items.splice(i, 1);
+                        continue;
+                    }
+                }
+
+                // Remove item if it hits planet surface without catch
+                if (item.dist <= radius) {
+                    items.splice(i, 1);
+                }
+            }
+
+            // Update Floating Scores Animation
+            for (let i = floatingScores.length - 1; i >= 0; i--) {
+                const fs = floatingScores[i];
+                fs.y -= 1.2;
+                fs.alpha -= 0.025;
+                if (fs.alpha <= 0) {
+                    floatingScores.splice(i, 1);
+                }
+            }
+
+            // Spawn Control
+            spawnCounter++;
+            const currentConfig = STAGE_CONFIGS[currentStageIndex];
+            if (spawnCounter >= currentConfig.spawnRate) {
+                spawnItem();
+                spawnCounter = 0;
+            }
+        }
+
+        // Main Render Loop
+        function renderLoop() {
+            if (gameState === 'PLAYING') {
+                updateGamePhysics();
+            }
+
+            // Clear Background
+            ctx.fillStyle = '#0b0f19';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Stars
+            stars.forEach(star => {
+                ctx.fillStyle = `rgba(255, 255, 255, ${star.alpha})`;
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            const { cx, cy, radius } = getPlanetMetrics();
+
+            // Draw Gravity Rays (Visualizing Center Direction)
+            ctx.save();
+            ctx.strokeStyle = 'rgba(99, 102, 241, 0.06)';
+            ctx.lineWidth = 1;
+            for (let a = 0; a < Math.PI * 2; a += Math.PI / 6) {
+                ctx.beginPath();
+                ctx.moveTo(cx, cy);
+                ctx.lineTo(cx + Math.cos(a) * 1000, cy + Math.sin(a) * 1000);
+                ctx.stroke();
+            }
+            ctx.restore();
+
+            // Draw Central Planet
+            drawPlanet(cx, cy, radius, currentStageIndex);
+
+            // Draw Player Character
+            drawPlayer(cx, cy, radius, playerAngle);
+
+            // Draw Falling Items
+            items.forEach(item => drawItem(item, cx, cy));
+
+            // Draw Floating Score Texts
+            floatingScores.forEach(fs => {
+                ctx.save();
+                ctx.globalAlpha = fs.alpha;
+                ctx.fillStyle = fs.color;
+                ctx.font = 'bold 22px Jua, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.shadowColor = '#000';
+                ctx.shadowBlur = 6;
+                ctx.fillText(fs.text, fs.x, fs.y);
+                ctx.restore();
+            });
+
+            animFrameId = requestAnimationFrame(renderLoop);
+        }
+
+        // --- Stage & Modal Flow Management ---
+
+        function startStage(stageIdx) {
+            currentStageIndex = stageIdx;
+            const config = STAGE_CONFIGS[currentStageIndex];
+
+            planetStageTitle.innerText = `STAGE ${config.stage}: ${config.name}`;
+            planetGravityText.innerText = config.gravityText;
+            planetBadgeIcon.innerText = config.icon;
+
+            timer = 90;
+            timerDisplay.innerText = `${timer}초`;
+            items = [];
+            floatingScores = [];
+            playerAngle = -Math.PI / 2;
+
+            modalOverlay.classList.add('hidden');
+            gameState = 'PLAYING';
+
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if (gameState === 'PLAYING') {
+                    timer--;
+                    timerDisplay.innerText = `${timer}초`;
+                    if (timer <= 0) {
+                        clearInterval(timerInterval);
+                        handleStageComplete();
+                    }
+                }
+            }, 1000);
+        }
+
+        function handleStageComplete() {
+            gameState = 'STAGE_CLEAR';
+            playSound('clear');
+
+            if (currentStageIndex < STAGE_CONFIGS.length - 1) {
+                // Advance to Next Stage
+                const nextConfig = STAGE_CONFIGS[currentStageIndex + 1];
+                modalIcon.innerText = nextConfig.icon;
+                modalTitle.innerText = `STAGE ${currentStageIndex + 1} 클리어! 🎉`;
+                modalSubtitle.innerText = `현재 누적 점수: ${score}점`;
+                modalContent.innerHTML = `
+                    <p class="text-yellow-300 font-bold mb-1">🚀 다음 스테이지: ${nextConfig.name}</p>
+                    <p class="mb-2">${nextConfig.desc}</p>
+                    <div class="bg-indigo-950/60 p-2.5 rounded border border-indigo-700/50 text-xs text-indigo-200">
+                        💡 **핵심 포인트**: ${currentStageIndex === 0 ? '달은 중력이 약해 사과가 천천히 떨어집니다!' : '목성은 중력이 강해 사과가 빠르게 떨어집니다!'}
+                    </div>
+                `;
+                modalActionBtn.innerText = `다음 Stage (${nextConfig.name}) 시작! 🚀`;
+                modalActionBtn.onclick = () => startStage(currentStageIndex + 1);
+                modalOverlay.classList.remove('hidden');
+
+            } else {
+                // Game Over / Final Evaluation
+                modalIcon.innerText = '🏆';
+                modalTitle.innerText = '탐험 완수! 최종 성공 🎉';
+                modalSubtitle.innerText = `최종 누적 점수: ${score}점`;
+                modalContent.innerHTML = `
+                    <p class="text-emerald-300 font-bold mb-2">지구, 달, 목성의 중력을 모두 체험했습니다!</p>
+                    <ul class="space-y-1 text-xs list-disc list-inside text-slate-300">
+                        <li>중력의 방향은 항상 <strong class="text-yellow-300">천체의 중심</strong>입니다.</li>
+                        <li>물체의 <strong class="text-amber-300">질량</strong>은 어디서나 변하지 않습니다.</li>
+                        <li>물체의 <strong class="text-cyan-300">무게</strong>는 중력이 강할수록 커집니다.</li>
+                    </ul>
+                `;
+                modalActionBtn.innerText = '처음부터 다시 도전 🔄';
+                modalActionBtn.onclick = () => {
+                    score = 0;
+                    scoreDisplay.innerText = '0점';
+                    startStage(0);
+                };
+                modalOverlay.classList.remove('hidden');
+            }
+        }
+
+        function showStartModal() {
+            modalIcon.innerText = '🚀';
+            modalTitle.innerText = '중력 탐험대 출발!';
+            modalSubtitle.innerText = '중학교 1학년 과학: 중력과 질량·무게 미니게임';
+            modalContent.innerHTML = `
+                <p class="text-indigo-300 font-bold mb-1">🎮 게임 방법:</p>
+                <p>1. 천체 중심 방향으로 떨어지는 사과를 받으세요.</p>
+                <p>2. 태블릿 화면 양옆의 <span class="text-yellow-300 font-bold">⬅️ ➡️ 버튼</span>이나 키보드 <span class="text-yellow-300 font-bold">방향키</span>로 이동합니다.</p>
+                <p>3. 각 스테이지(90초)마다 중력 크기가 달라집니다!</p>
+            `;
+            modalActionBtn.innerText = '게임 시작하기 🚀';
+            modalActionBtn.onclick = () => {
+                initAudio();
+                score = 0;
+                scoreDisplay.innerText = '0점';
+                startStage(0);
+            };
+            modalOverlay.classList.remove('hidden');
+        }
+
+        function showHelpModal() {
+            modalIcon.innerText = '📖';
+            modalTitle.innerText = '중력과 질량·무게 핵심 요약';
+            modalSubtitle.innerText = '중학교 1학년 과학 개념 정리';
+            modalContent.innerHTML = `
+                <div class="space-y-2 text-xs">
+                    <p><strong class="text-yellow-300">1. 중력의 방향:</strong> 천체의 중심 방향 (아래쪽이 아니라 중심!)</p>
+                    <p><strong class="text-amber-300">2. 질량 (kg):</strong> 장소에 관계없이 일정한 물체의 고유한 양</p>
+                    <p><strong class="text-cyan-300">3. 무게 (N):</strong> 중력의 크기 (달에서는 지구의 1/6, 목성에서는 약 2.5배)</p>
+                </div>
+            `;
+            modalActionBtn.innerText = '확인 완료';
+            modalActionBtn.onclick = () => {
+                modalOverlay.classList.add('hidden');
+                if (gameState === 'PLAYING') {
+                    // Resume game
+                }
+            };
+            modalOverlay.classList.remove('hidden');
+        }
+
+        // Init Setup
+        window.onload = () => {
+            resizeCanvas();
+            showStartModal();
+            requestAnimationFrame(renderLoop);
+        };
+    </script>
+</body>
+</html>
