@@ -20,7 +20,6 @@
         .font-orbitron {
             font-family: 'Orbitron', sans-serif;
         }
-        /* Custom scrollbar for concept modal */
         ::-webkit-scrollbar {
             width: 6px;
         }
@@ -31,7 +30,6 @@
             background: #3b82f6;
             border-radius: 4px;
         }
-        /* Glow animation effects */
         @keyframes pulse-glow {
             0%, 100% { filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.6)); }
             50% { filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.9)); }
@@ -39,12 +37,16 @@
         .gold-glow {
             animation: pulse-glow 2s infinite;
         }
+        .touch-btn {
+            touch-action: none;
+            -webkit-tap-highlight-color: transparent;
+        }
     </style>
 </head>
 <body class="bg-slate-950 text-white min-h-screen flex flex-col justify-between overflow-x-hidden select-none">
 
     <!-- Header Navigation Bar -->
-    <header class="bg-slate-900/90 border-b border-slate-800 px-4 py-3 sticky top-0 z-30 backdrop-blur">
+    <header class="bg-slate-900/90 border-b border-slate-800 px-4 py-2.5 sticky top-0 z-30 backdrop-blur">
         <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-xl shadow-lg shadow-indigo-500/30">
@@ -66,6 +68,15 @@
                     <i id="soundIcon" class="fa-solid fa-volume-high"></i>
                 </button>
             </div>
+        </div>
+
+        <!-- Mobile & iPad Mute Switch Notice Banner -->
+        <div class="max-w-7xl mx-auto mt-2 bg-amber-950/60 border border-amber-500/40 rounded-lg px-3 py-1 text-[11px] text-amber-200 flex items-center justify-between gap-2">
+            <div class="flex items-center gap-1.5">
+                <i class="fa-solid fa-bell-slash text-amber-400"></i>
+                <span><strong>모바일/아이패드 오디오 안내:</strong> 기기 측면의 무음(매너) 모드를 해제하고 미디어 음량을 올리면 소리가 정상 출력됩니다.</span>
+            </div>
+            <span class="text-[10px] text-amber-300/80 hidden sm:inline">첫 화면 터치 시 소리 자동 활성화</span>
         </div>
     </header>
 
@@ -107,13 +118,13 @@
 
                 <!-- Touch Controls Overlay -->
                 <div id="touchControls" class="absolute bottom-4 left-4 right-4 flex justify-between items-center pointer-events-auto hidden z-10">
-                    <button id="btnTouchLeft" class="w-16 h-16 rounded-full bg-indigo-600/70 active:bg-indigo-500 border-2 border-indigo-400/60 text-white text-2xl flex items-center justify-center backdrop-blur shadow-xl active:scale-95 transition cursor-pointer select-none">
+                    <button id="btnTouchLeft" class="touch-btn w-16 h-16 rounded-full bg-indigo-600/80 active:bg-indigo-500 border-2 border-indigo-300/80 text-white text-2xl flex items-center justify-center backdrop-blur shadow-2xl active:scale-95 transition cursor-pointer select-none">
                         <i class="fa-solid fa-arrow-left"></i>
                     </button>
-                    <div class="text-xs text-slate-300/80 bg-slate-900/70 px-3 py-1 rounded-full backdrop-blur pointer-events-none">
+                    <div class="text-xs text-slate-200 bg-slate-900/80 px-3.5 py-1.5 rounded-full backdrop-blur border border-slate-700/60 pointer-events-none font-semibold">
                         터치 이동 / 키보드 [←] [→]
                     </div>
-                    <button id="btnTouchRight" class="w-16 h-16 rounded-full bg-indigo-600/70 active:bg-indigo-500 border-2 border-indigo-400/60 text-white text-2xl flex items-center justify-center backdrop-blur shadow-xl active:scale-95 transition cursor-pointer select-none">
+                    <button id="btnTouchRight" class="touch-btn w-16 h-16 rounded-full bg-indigo-600/80 active:bg-indigo-500 border-2 border-indigo-300/80 text-white text-2xl flex items-center justify-center backdrop-blur shadow-2xl active:scale-95 transition cursor-pointer select-none">
                         <i class="fa-solid fa-arrow-right"></i>
                     </button>
                 </div>
@@ -153,7 +164,7 @@
 
                         <div class="w-full flex flex-col sm:flex-row gap-2">
                             <button id="btnStartGame" class="flex-1 py-3.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold text-base shadow-xl shadow-indigo-600/30 transition transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer">
-                                🎮 게임 시작 <i class="fa-solid fa-play ml-1"></i>
+                                🎮 탐험 시작하기 <i class="fa-solid fa-play ml-1"></i>
                             </button>
                             <button id="btnStartConcept" class="px-4 py-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-indigo-500/30 font-semibold text-xs transition active:scale-95 cursor-pointer">
                                 📖 과학개념확인
@@ -376,28 +387,45 @@
         </div>
     </div>
 
-    <!-- JavaScript Game Logic -->
+    <!-- JavaScript Game Engine Logic -->
     <script>
-        // 1. Web Audio Synthesizer Sound Engine
-        class SoundEngine {
+        // 1. Mobile Web Audio Engine with iOS Safari / Android Touch Unlocker
+        class MobileSoundEngine {
             constructor() {
                 this.ctx = null;
                 this.muted = false;
+                this.unlocked = false;
             }
 
-            init() {
-                if (!this.ctx) {
-                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-                    this.ctx = new AudioCtx();
-                }
-                if (this.ctx && this.ctx.state === 'suspended') {
-                    this.ctx.resume();
+            // Universal Mobile Audio Unlocker
+            unlock() {
+                try {
+                    if (!this.ctx) {
+                        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                        this.ctx = new AudioCtx();
+                    }
+                    
+                    if (this.ctx && this.ctx.state === 'suspended') {
+                        this.ctx.resume();
+                    }
+
+                    // Flush tiny silent buffer to guarantee iOS Safari context state transition
+                    if (this.ctx && !this.unlocked) {
+                        const buffer = this.ctx.createBuffer(1, 1, 22050);
+                        const source = this.ctx.createBufferSource();
+                        source.buffer = buffer;
+                        source.connect(this.ctx.destination);
+                        source.start(0);
+                        this.unlocked = true;
+                    }
+                } catch (e) {
+                    console.log("Audio unlock attempted:", e);
                 }
             }
 
             playTone(freq, type, duration, vol = 0.1) {
                 if (this.muted) return;
-                this.init();
+                this.unlock();
                 if (!this.ctx) return;
 
                 try {
@@ -432,7 +460,7 @@
 
             playBombExplode() {
                 if (this.muted) return;
-                this.init();
+                this.unlock();
                 if (!this.ctx) return;
                 try {
                     const osc = this.ctx.createOscillator();
@@ -462,9 +490,14 @@
             }
         }
 
-        const sounds = new SoundEngine();
+        const sounds = new MobileSoundEngine();
 
-        // 2. Stage Configurations (90s / 1 min 30s per stage)
+        // Bind global touch listeners to unlock Web Audio on first interaction
+        ['touchstart', 'touchend', 'mousedown', 'pointerdown', 'click'].forEach(evt => {
+            window.addEventListener(evt, () => sounds.unlock(), { passive: true });
+        });
+
+        // 2. Stage Configurations (90s per stage)
         const STAGES = [
             {
                 id: 'earth',
@@ -515,7 +548,7 @@
 
         // Radial Player Explorer
         const player = {
-            angle: -Math.PI / 2, // At top of planet surface
+            angle: -Math.PI / 2, // Top center
             speed: 0.038,
             movingLeft: false,
             movingRight: false,
@@ -527,7 +560,7 @@
         let floatingTexts = [];
         let bgStars = [];
 
-        // Planet Positioning Constants
+        // Planet Positioning
         let planetCX = 0;
         let planetCY = 0;
         let planetRadius = 170;
@@ -588,7 +621,7 @@
             ctx.lineWidth = 2.5;
             ctx.stroke();
 
-            // Green Leaf
+            // Leaf
             ctx.beginPath();
             ctx.ellipse(radius * 0.35, -radius * 0.95, radius * 0.4, radius * 0.2, Math.PI / 4, 0, Math.PI * 2);
             ctx.fillStyle = '#2ECC71';
@@ -666,7 +699,7 @@
             ctx.fillStyle = '#888888';
             ctx.fillRect(-radius * 0.25, -radius * 1.1, radius * 0.5, radius * 0.25);
 
-            // Fuse Rope
+            // Fuse
             ctx.beginPath();
             ctx.moveTo(0, -radius * 1.1);
             ctx.quadraticCurveTo(radius * 0.6, -radius * 1.5, radius * 0.5, -radius * 1.8);
@@ -674,7 +707,7 @@
             ctx.lineWidth = 2.5;
             ctx.stroke();
 
-            // Spark
+            // Flame Spark
             const sparkX = radius * 0.5;
             const sparkY = -radius * 1.8;
             const flameR = 3 + Math.sin(time * 0.02) * 1.5;
@@ -714,7 +747,7 @@
             ctx.lineWidth = 2.5;
             ctx.stroke();
 
-            // Spark
+            // Gold Spark
             const sparkX = radius * 0.5;
             const sparkY = -radius * 1.8;
             ctx.beginPath();
@@ -758,7 +791,7 @@
                 ctx.arc(0, 0, radius * 0.85, 1.2, 2.5);
                 ctx.stroke();
 
-                // Atmospheric Glow
+                // Atmosphere
                 ctx.beginPath();
                 ctx.arc(0, 0, radius + 8, 0, Math.PI * 2);
                 ctx.strokeStyle = 'rgba(0, 229, 255, 0.35)';
@@ -766,7 +799,7 @@
                 ctx.stroke();
 
             } else if (stageId === 'moon') {
-                // Moon Gray Gradient
+                // Moon Surface
                 const moonGrad = ctx.createRadialGradient(-radius * 0.3, -radius * 0.3, radius * 0.1, 0, 0, radius);
                 moonGrad.addColorStop(0, '#E2E8F0');
                 moonGrad.addColorStop(0.7, '#94A3B8');
@@ -803,16 +836,16 @@
                 ctx.stroke();
 
             } else if (stageId === 'jupiter') {
-                // Jupiter Base
+                // Jupiter Base Sphere
                 ctx.beginPath();
                 ctx.arc(0, 0, radius, 0, Math.PI * 2);
                 ctx.fillStyle = '#D97706';
                 ctx.fill();
 
                 ctx.save();
-                ctx.clip(); // Clip stripes to planet sphere
+                ctx.clip(); // Clip bands inside planet radius
 
-                // Atmospheric Gas Bands
+                // Atmospheric Stripes
                 const bands = [
                     { y: -0.95, h: 0.22, color: '#FDE68A' },
                     { y: -0.73, h: 0.28, color: '#B45309' },
@@ -828,7 +861,7 @@
                     ctx.fillRect(-radius, b.y * radius, radius * 2, b.h * radius);
                 });
 
-                // Great Red Spot Storm Vortex
+                // Great Red Spot
                 ctx.save();
                 const grsX = radius * 0.36;
                 const grsY = radius * 0.18;
@@ -850,9 +883,9 @@
                 ctx.stroke();
 
                 ctx.restore();
-                ctx.restore(); // Restore clip
+                ctx.restore();
 
-                // Atmospheric Glow
+                // Glow
                 ctx.beginPath();
                 ctx.arc(0, 0, radius + 8, 0, Math.PI * 2);
                 ctx.strokeStyle = 'rgba(245, 158, 11, 0.45)';
@@ -867,7 +900,7 @@
         function drawPlayer(ctx, cx, cy, radius, p) {
             ctx.save();
             ctx.translate(cx, cy);
-            ctx.rotate(p.angle + Math.PI / 2); // Stand upright on planet
+            ctx.rotate(p.angle + Math.PI / 2);
             ctx.translate(0, -radius);
 
             const legAngle = Math.sin(p.walkCycle) * 0.35;
@@ -900,7 +933,7 @@
             ctx.roundRect(-9, -32, 18, 18, 4);
             ctx.fill();
 
-            // Chest Badge
+            // Badge
             ctx.fillStyle = '#F59E0B';
             ctx.beginPath();
             ctx.arc(0, -25, 3, 0, Math.PI * 2);
@@ -920,7 +953,7 @@
             ctx.lineTo(13 + Math.sin(legAngle) * 6, -18);
             ctx.stroke();
 
-            // Face & Hair
+            // Head
             ctx.fillStyle = '#FFD1A4';
             ctx.beginPath();
             ctx.arc(0, -42, 10, 0, Math.PI * 2);
@@ -995,7 +1028,7 @@
             if (player.angle < minAngle) player.angle = minAngle;
             if (player.angle > maxAngle) player.angle = maxAngle;
 
-            // Update Items
+            // Falling Items Physics
             const fallAccel = 0.08 * stage.gravityFactor;
 
             for (let i = items.length - 1; i >= 0; i--) {
@@ -1113,6 +1146,7 @@
         }
 
         function startStage(stageIdx) {
+            sounds.unlock();
             currentStageIdx = stageIdx;
             stageTimeLeft = 90; // 90 Seconds Timer (1분 30초)
             items = [];
@@ -1164,7 +1198,7 @@
                 `;
                 document.getElementById('stageClearScore').textContent = score;
             } else {
-                // All Stages Completed Result
+                // Final Results
                 gameState = 'RESULT';
                 document.getElementById('hudOverlay').classList.add('hidden');
                 document.getElementById('touchControls').classList.add('hidden');
@@ -1191,20 +1225,22 @@
         const conceptModal = document.getElementById('conceptModal');
 
         function openConceptModal() {
+            sounds.unlock();
             sounds.playClick();
             previousGameState = gameState;
             if (gameState === 'PLAYING') {
-                gameState = 'PAUSED_CONCEPT'; // Pause timer & spawns
+                gameState = 'PAUSED_CONCEPT'; // Freeze timer & items
                 clearInterval(timerInterval);
             }
             conceptModal.classList.remove('hidden');
         }
 
         function closeConceptModal() {
+            sounds.unlock();
             sounds.playClick();
             conceptModal.classList.add('hidden');
             if (previousGameState === 'PLAYING') {
-                gameState = 'PLAYING'; // Resume seamlessly at current planet & remaining seconds
+                gameState = 'PLAYING'; // Unpause and resume stage countdown
                 runTimer();
             } else if (previousGameState === 'START') {
                 gameState = 'START';
@@ -1216,32 +1252,35 @@
         document.getElementById('btnCloseConcept').addEventListener('click', closeConceptModal);
         document.getElementById('btnReturnToGame').addEventListener('click', closeConceptModal);
 
-        // Navigation Flow Buttons
+        // Menu Navigation Handlers
         document.getElementById('btnStartGame').addEventListener('click', () => {
+            sounds.unlock();
             sounds.playClick();
             score = 0;
             startStage(0);
         });
 
         document.getElementById('btnNextStage').addEventListener('click', () => {
+            sounds.unlock();
             sounds.playClick();
             startStage(currentStageIdx + 1);
         });
 
         document.getElementById('btnRestartGame').addEventListener('click', () => {
+            sounds.unlock();
             sounds.playClick();
             score = 0;
             startStage(0);
         });
 
-        // Touch Control Listeners
+        // Touch Control Button Setup
         const btnTouchLeft = document.getElementById('btnTouchLeft');
         const btnTouchRight = document.getElementById('btnTouchRight');
 
         function setupMoveButton(btn, direction) {
             const startMove = (e) => {
                 if (e.cancelable) e.preventDefault();
-                sounds.init();
+                sounds.unlock();
                 if (direction === 'left') player.movingLeft = true;
                 if (direction === 'right') player.movingRight = true;
                 btn.classList.add('scale-95', 'bg-indigo-500');
@@ -1270,8 +1309,9 @@
         setupMoveButton(btnTouchLeft, 'left');
         setupMoveButton(btnTouchRight, 'right');
 
-        // Keyboard Event Listeners
+        // Keyboard Movement Controls
         window.addEventListener('keydown', (e) => {
+            sounds.unlock();
             if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
                 player.movingLeft = true;
             }
@@ -1289,9 +1329,10 @@
             }
         });
 
-        // Sound Toggle
+        // Sound Mute Toggle
         let isMuted = false;
         document.getElementById('btnSoundToggle').addEventListener('click', () => {
+            sounds.unlock();
             isMuted = !isMuted;
             sounds.muted = isMuted;
             const icon = document.getElementById('soundIcon');
@@ -1303,7 +1344,7 @@
             }
         });
 
-        // Window Load Initialization
+        // Window Load Handler
         window.onload = function() {
             resizeCanvas();
             updateCalculator();
